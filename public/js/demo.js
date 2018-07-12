@@ -96,7 +96,6 @@ function profile_summary(profile){
         },
         needs: {},
         values: {},
-        behavior: {},
         consumption_preferences: {},
     };
     
@@ -126,11 +125,55 @@ function profile_summary(profile){
     return summary;
 }
 
+function averageProfileSummaries(summaries){
+    var average = JSON.parse(JSON.stringify(summaries[0]));
+    for (var i = 1; i < summaries.length; i++){
+        for (var trait in average.personality.big5){
+            average.personality.big5[trait] += summaries[i].personality.big5[trait];
+        }
+        for (var trait in average.personality.facets){
+            for (var facet in average.personality.facets[trait]){
+                average.personality.facets[trait][facet] += summaries[i].personality.facets[trait][facet];
+            }
+        }
+        for (var need in average.needs){
+            average.needs[need] += summaries[i].needs[need];
+        }
+        for (var value in average.values){
+            average.values[value] += summaries[i].values[value]
+        }
+        for (var category in average.consumption_preferences){
+            for (var preference in average.consumption_preferences[category]){
+                average.consumption_preferences[category][preference] += summaries[i].consumption_preferences[category][preference];
+            }
+        }
+    }
+    
+    for (var trait in average.personality.big5){
+            average.personality.big5[trait] /= summaries.length;
+        }
+        for (var trait in average.personality.facets){
+            for (var facet in average.personality.facets[trait]){
+                average.personality.facets[trait][facet] /= summaries.length;
+            }
+        }
+        for (var need in average.needs){
+            average.needs[need] /= summaries.length;
+        }
+        for (var value in average.values){
+            average.values[value] /= summaries.length;
+        }
+        for (var category in average.consumption_preferences){
+            for (var preference in average.consumption_preferences[category]){
+                average.consumption_preferences[category][preference] /= summaries.length;
+            }
+        }
+    return average;
+}
+
 function profile_difference(profileA, profileB){
     var summaryA = profile_summary(profileA);
     var summaryB = profile_summary(profileB);
-    console.log(summaryA);
-    console.log(summaryB);
     var diff = {
         personality: 0,
         needs: 0,
@@ -141,18 +184,14 @@ function profile_difference(profileA, profileB){
     var personalityCount = 0;
     for (var trait in summaryA.personality.big5){
         diff.personality += Math.abs(summaryA.personality.big5[trait] - summaryB.personality.big5[trait]);
-        console.log(trait, diff.personality)
         personalityCount++;
     }
     for (var trait in summaryA.personality.facets){
         for (var facet in summaryA.personality.facets[trait]){
             diff.personality += Math.abs(summaryA.personality.facets[trait][facet] - summaryB.personality.facets[trait][facet]);
-            console.log(trait, facet, diff.personality);
             personalityCount++;
         }
     }
-    
-    console.log(diff.personality, personalityCount)
     
     diff.personality = 1 - diff.personality / personalityCount;
     
@@ -184,6 +223,8 @@ function profile_difference(profileA, profileB){
     
     return diff;
 }
+
+var people = [];
 var person1 = undefined, person2 = undefined;
 
 $(document).ready(function() {
@@ -382,7 +423,6 @@ $(document).ready(function() {
   }
 
   function getProfileForText(text, options) {
-      console.log(text, options);
     getProfile(text, extend(options || {}, {source_type: 'text'}));
   }
 
@@ -464,11 +504,13 @@ $(document).ready(function() {
         $loading.hide();
         $output.show();
         scrollTo($outputHeader);
+        people.push(profile_summary(data));
         person1 = person2;
         person2 = data;
         if (person1 !== undefined && person2 !== undefined){
             try{
                 console.log(profile_difference(person1, person2));
+                console.log(averageProfileSummaries(people));
             }
             catch (TypeError){
                 console.log("typeError")
@@ -642,7 +684,6 @@ $(document).ready(function() {
   const replacements = replacementsForLang(globalState.userLocale || OUTPUT_LANG);
 
   function loadOutput(data) {
-    console.log(data);
     setTextSummary(data);
     loadWordCount(data);
 
