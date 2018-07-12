@@ -88,8 +88,103 @@ function renderMarkdown(s) {
   ]);
 }
 
+function profile_summary(profile){
+    var summary = {
+        personality: {
+            big5: {},
+            facets: {}
+        },
+        needs: {},
+        values: {},
+        behavior: {},
+        consumption_preferences: {},
+    };
+    
+    for (var big5 of profile.personality){
+        summary.personality.big5[big5.name] = big5.percentile;
+        summary.personality.facets[big5.name] = {};
+        for (var facet of big5.children){
+            summary.personality.facets[big5.name][facet.name] = facet.percentile;
+        }
+    }
+    
+    for (var need of profile.needs){
+        summary.needs[need.name] = need.percentile;
+    }
+    
+    for (var value of profile.values){
+        summary.values[value.name] = value.percentile;
+    }
+    
+    for (var category of profile.consumption_preferences){
+        summary.consumption_preferences[category.name.substring(0, category.name.length - 12)] = {};
+        for (var preference of category.consumption_preferences){
+            summary.consumption_preferences[category.name.substring(0, category.name.length - 12)][preference.name] = preference.score;
+        }     
+    }
+    
+    return summary;
+}
 
-
+function profile_difference(profileA, profileB){
+    var summaryA = profile_summary(profileA);
+    var summaryB = profile_summary(profileB);
+    console.log(summaryA);
+    console.log(summaryB);
+    var diff = {
+        personality: 0,
+        needs: 0,
+        values: 0,
+        consumption_preferences: 0
+    };
+    
+    var personalityCount = 0;
+    for (var trait in summaryA.personality.big5){
+        diff.personality += Math.abs(summaryA.personality.big5[trait] - summaryB.personality.big5[trait]);
+        console.log(trait, diff.personality)
+        personalityCount++;
+    }
+    for (var trait in summaryA.personality.facets){
+        for (var facet in summaryA.personality.facets[trait]){
+            diff.personality += Math.abs(summaryA.personality.facets[trait][facet] - summaryB.personality.facets[trait][facet]);
+            console.log(trait, facet, diff.personality);
+            personalityCount++;
+        }
+    }
+    
+    console.log(diff.personality, personalityCount)
+    
+    diff.personality = 1 - diff.personality / personalityCount;
+    
+    var needCount = 0;
+    for (var need in summaryA.needs){
+        diff.needs += Math.abs(summaryA.needs[need] - summaryB.needs[need]);
+        needCount++;
+    }
+    
+    diff.needs = 1 - diff.needs / needCount;
+    
+    var valueCount = 0;
+    for (var value in summaryA.values){
+        diff.values += Math.abs(summaryA.values[value] - summaryB.values[value]);
+        valueCount++;
+    }
+    
+    diff.values = 1 - diff.values / valueCount;
+    
+    
+    var preferencesCount = 0;
+    for (var category in summaryA.consumption_preferences){
+        for (var preference in summaryA.consumption_preferences[category]){
+            diff.consumption_preferences += Math.abs(summaryA.consumption_preferences[category][preference] - summaryB.consumption_preferences[category][preference]);
+            preferencesCount++;
+        }     
+    }
+    diff.consumption_preferences = 1 - diff.consumption_preferences / preferencesCount;
+    
+    return diff;
+}
+var person1 = undefined, person2 = undefined;
 
 $(document).ready(function() {
 
@@ -287,6 +382,7 @@ $(document).ready(function() {
   }
 
   function getProfileForText(text, options) {
+      console.log(text, options);
     getProfile(text, extend(options || {}, {source_type: 'text'}));
   }
 
@@ -368,6 +464,16 @@ $(document).ready(function() {
         $loading.hide();
         $output.show();
         scrollTo($outputHeader);
+        person1 = person2;
+        person2 = data;
+        if (person1 !== undefined && person2 !== undefined){
+            try{
+                console.log(profile_difference(person1, person2));
+            }
+            catch (TypeError){
+                console.log("typeError")
+            }
+        }
         loadOutput(data);
         updateJSON(data);
         loadConsumptionPreferences(data);
@@ -536,6 +642,7 @@ $(document).ready(function() {
   const replacements = replacementsForLang(globalState.userLocale || OUTPUT_LANG);
 
   function loadOutput(data) {
+    console.log(data);
     setTextSummary(data);
     loadWordCount(data);
 
