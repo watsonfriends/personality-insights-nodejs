@@ -1,0 +1,110 @@
+
+.bx--cloud-header__user-icon {
+    height: 3em;
+    width: 2.5em;
+}
+
+.dropdown .bx--overflow-menu__icon {
+    fill:#fff;
+}
+
+.dropbtn:hover , .dropbtn:focus {
+    background-color: rgba(85,150,230,0.1);
+}
+
+/* The container <div> - needed to position the dropdown content */
+.dropdown {
+    position: relative;
+    display: inline-block;
+    margin-right:20px;
+}
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #fff;
+    min-width: 160px;
+    /*    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);*/
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.1);
+    z-index: 1;
+    left: -130px;
+    top: 40px;
+    color:#5a6872;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+
+    font-size: 0.9em;
+    font-family: "ibm-plex-sans",Helvetica Neue,Arial,sans-serif;
+    font-weight: 400;
+}
+
+.dropdown-content a:hover {
+    background-color: rgba(85,150,230,0.1);
+}
+
+.show {display:block;}
+
+table td a {
+    text-decoration:none;
+}
+
+.bx--overflow-menu-options__option:hover .bx--overflow-menu-options__btn {
+    color: #5a6872;
+}
+
+.bx--overflow-menu-options__option--danger:hover .bx--overflow-menu-options__btn {
+    color: #fff;
+}
+
+
+body {
+    background-color:#dfe3e6;
+}
+
+.bx--grid {
+    background-color:#fff;
+    padding-top:50px;
+}
+.header {
+    width:100%;
+    margin:0;
+    background-color:#3d70b2;
+    text-align:center;
+    padding:30px;
+}
+
+/*
+.header h1 {
+    color:#fff;
+}
+*/
+
+.page-header__label {
+    font-size: 1em;
+    color: #cdd1d4;
+    font-weight: 400;
+    margin: 0rem 0 0.1em;
+    white-space: nowrap;
+    text-transform: capitalize;
+}
+
+.page-header__title {
+    font-size: 3rem;
+    color: #fff;
+    font-weight: 300;
+    line-height: 1.25;
+    letter-spacing: 0;
+    padding: 0;
+    transition: 250ms cubic-bezier(0.5, 0, 0.1, 1);
+}
+
+/*
+.bx--structured-list-content--nowrap {
+    width:80px;
+}*/
