@@ -16,6 +16,55 @@
 /* global $, TextSummary, _, hljs, TWITTER_USER */
 'use strict';
 
+var teamMembersLoaded = false;
+
+var team = [
+    {
+        id: "Oprah",
+        lang: "en",
+        imagePath: "/images/twitter/oprah.png"
+    },
+    {
+        id: "KingJames",
+        lang: "en",
+        imagePath: "/images/twitter/kingjames.jpg"
+    },
+    {
+        id: "DonFranciscoTV",
+        lang: "es",
+        imagePath: "/images/twitter/DonFranciscoTV.jpg"
+    },
+    {
+        id: "pontifex_es",
+        lang: "es",
+        imagePath: "/images/twitter/pontifex_es.jpg"
+    }
+];
+
+var teamAverage = undefined;
+
+var teamHead = d3.select("#team-table-body")
+
+var candidates = [
+    {
+        id: "trikaOfficial",
+        lang: "ar",
+        imagePath: "/images/twitter/trikaofficial.jpg"
+    },
+    {
+        id: "faridyu",
+        lang: "ja",
+        imagePath: "/images/twitter/faridyu.jpg"
+    },
+    {
+        id: "Krungy21",
+        lang: "ko",
+        imagePath: "/images/twitter/Krungy21.jpg"
+    }
+];
+
+var candidateHead = d3.select("#candidate-table-body")
+
 var markdown = function(s) {
   return window.markdownit().render(s);
 };
@@ -126,6 +175,7 @@ function profile_summary(profile){
 }
 
 function averageProfileSummaries(summaries){
+    console.log("Initial Summary", summaries[0]);
     var average = JSON.parse(JSON.stringify(summaries[0]));
     for (var i = 1; i < summaries.length; i++){
         for (var trait in average.personality.big5){
@@ -171,9 +221,7 @@ function averageProfileSummaries(summaries){
     return average;
 }
 
-function profile_difference(profileA, profileB){
-    var summaryA = profile_summary(profileA);
-    var summaryB = profile_summary(profileB);
+function summary_match(summaryA, summaryB){
     var diff = {
         personality: 0,
         needs: 0,
@@ -353,6 +401,10 @@ $(document).ready(function() {
       globalState.selectedTwitterImage = $('label[for="' + $(this).attr('id') + '"] img').attr('src');
       globalState.selectedTwitterUserLang = twitterLang;
     });
+      
+    $('input[name="twitter"]').each(function(){
+        twitterIDs.push(this.value);
+    })
 
     $inputForm1.submit(function(e) {
       e.cancelBubble = true;
@@ -495,42 +547,7 @@ $(document).ready(function() {
     else
       payload.text = data;
 
-    $.ajax({
-      type: 'POST',
-      data: payload,
-      url: url,
-      dataType: 'json',
-      success: function(data) {
-        $loading.hide();
-        $output.show();
-        scrollTo($outputHeader);
-        people.push(profile_summary(data));
-        person1 = person2;
-        person2 = data;
-        if (person1 !== undefined && person2 !== undefined){
-            try{
-                console.log(profile_difference(person1, person2));
-                console.log(averageProfileSummaries(people));
-            }
-            catch (TypeError){
-                console.log("typeError")
-            }
-        }
-        loadOutput(data);
-        updateJSON(data);
-        loadConsumptionPreferences(data);
-        enableAnalyzeButtons(true);
-
-      },
-      error: function(err) {
-        // eslint-disable-next-line
-        console.error(err);
-        $loading.hide();
-        $error.show();
-        $errorMessage.text(getErrorMessage(err));
-        enableAnalyzeButtons(true);
-      }
-    });
+    
   }
 
   /**
@@ -683,8 +700,7 @@ $(document).ready(function() {
 
   const replacements = replacementsForLang(globalState.userLocale || OUTPUT_LANG);
 
-  function loadOutput(data) {
-    setTextSummary(data);
+  function loadOutput(teamSummaries, candidateSummary) {
     loadWordCount(data);
 
     // Add wrapped traits data from the user profile into the html
@@ -797,6 +813,7 @@ $(document).ready(function() {
   }
 
   function scrollTo(element) {
+      console.log(element);
     $('html, body').animate({
       scrollTop: element.offset().top
     }, 'fast');
@@ -892,24 +909,152 @@ $(document).ready(function() {
     $('#your-twitter-panel .analysis-form').show();
   }
 
-  function initialize() {
-    $('input[name="twitter"]:first').attr('checked', true);
-    $('input[name="text-sample"]:first').attr('checked', true);
-
-    globalState.selectedTwitterUser = $('input[name="twitter"]:first').val();
-    showHiddenLanguages();
-    preloadSampleTexts(function() {
-      loadSampleText(globalState.selectedSample);
+  function setupTeamMember(member, url, payload, i){
+        console.log(payload, url)
+        return $.ajax({
+          type: 'POST',
+          data: payload,
+          url: url,
+          dataType: 'json',
+          success: function(data) {
+            console.log(member);
+            member.profile = profile_summary(data);
+            drawTeamMember(member);
+          },
+          error: function(err) {
+            // eslint-disable-next-line
+            console.error(err);
+            $loading.hide();
+            $error.show();
+            $errorMessage.text(getErrorMessage(err));
+          }
+        });
+  }
+    
+  function setupCandidate(candidate, url, payload, i){
+      return $.ajax({
+          type: 'POST',
+          data: payload,
+          url: url,
+          dataType: 'json',
+          success: function(data) {
+            candidate.profile = profile_summary(data);
+            drawCandidate(candidate);
+            if (teamMembersLoaded){
+                var match = summary_match(teamAverage, candidate.profile);
+                var percentage = Math.floor(match.personality * 100);
+                candidate.matchPercentColumn.text(percentage + "%");
+            }
+          },
+          error: function(err) {
+            // eslint-disable-next-line
+            console.error(err);
+            $loading.hide();
+            $error.show();
+            $errorMessage.text(getErrorMessage(err));
+          }
     });
-    registerHandlers();
-    $inputTextArea.addClass('orientation', 'left-to-right');
-
-    if (selfAnalysis() && TWITTER_USER.handle) {
-      setSelfAnalysis();
+  }
+    
+  function initialize() {
+    teamHead.selectAll("*").remove();
+    setLoadingState();
+      
+    var calls = []
+    for (var i = 0; i < team.length; i++){
+        var payload = {
+            source_type: 'twitter',
+            userId: team[i].id,
+            accept_language: team[i].lang,
+            include_raw: false,
+            consumption_preferences: true,
+            language: undefined
+        }
+        
+        var url = '/api/profile/twitter';
+        
+        calls.push(setupTeamMember(team[i], url, payload, i));
     }
-    selectDefaultLanguage();
+      
+    
+    $.when.apply(null, calls).done(function(){
+        teamAverage = averageProfileSummaries(team.map(x => x.profile));
+        teamMembersLoaded = true;
+        showPersonalityMatches();
+    })
+      
+    for (var i = 0; i < candidates.length; i++){
+        var payload = {
+            source_type: 'twitter',
+            userId: candidates[i].id,
+            accept_language: candidates[i].lang,
+            include_raw: false,
+            consumption_preferences: true,
+            language: undefined
+        }
+
+        var url = '/api/profile/twitter';
+        
+        candidates[i].profile = undefined;
+        
+        calls.push(setupCandidate(candidates[i], url, payload, i));
+        
+        
+    }
+      
+    $.when.apply(null, calls).done(function(){
+        $loading.hide();
+    })
+  }
+    
+  function showPersonalityMatches(){
+      for (var i = 0; i < candidates.length; i++){
+          if (candidates[i].profile !== undefined){
+              var match = summary_match(teamAverage, candidates[i].profile);
+              var percentage = Math.floor(match.personality * 100);
+              candidates[i].matchPercentColumn.text(percentage + "%");
+          }
+      }
   }
 
+  function drawTeamMember(member){
+      member.elem = teamHead.append("label").attr({
+          for: "apache-id",
+          "aria-label": "apache spark",
+          class: "bx--structured-list-row",
+          tabindex: 0
+      })
+
+      member.dummyColumn = member.elem.append("div").attr("class", "bx--structured-list-td");
+      member.imageElem = member.elem.append("div").attr("class", "bx--structured-list-td bx--structured-list-content--nowrap");
+      member.image = member.imageElem.append("img").attr({
+          class: "input--thumb",
+          src: member.imagePath
+      })
+
+      member.text = member.elem.append("div").attr("class", "bx--structured-list-td")
+      member.text.text("@" + member.id + " (" + member.lang.toUpperCase() + ")");
+  }
+    
+  function drawCandidate(candidate){
+      candidate.elem = candidateHead.append("label").attr({
+          for: "apache-id",
+          "aria-label": "apache spark",
+          class: "bx--structured-list-row",
+          tabindex: 0
+      });
+      
+      candidate.matchPercentColumn = candidate.elem.append("div").attr("class", "bx--structured-list-td");
+      candidate.imageElem = candidate.elem.append("div").attr("class", "bx--structured-list-td bx--structured-list-content--nowrap");
+      candidate.image = candidate.imageElem.append("img").attr({
+          class: "input--thumb",
+          src: candidate.imagePath
+      })
+
+      candidate.text = candidate.elem.append("div").attr("class", "bx--structured-list-td")
+      candidate.text.text("@" + candidate.id + " (" + candidate.lang.toUpperCase() + ")");
+  }
+    
   function selectDefaultLanguage() {
     if (['en', 'es', 'ja', 'ar', 'ko'].indexOf(globalState.userLocale) >= 0) {
       $('#lang-' + globalState.userLocale).prop('checked', true).trigger('click');
