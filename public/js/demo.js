@@ -6390,7 +6390,6 @@ $(document).ready(function() {
   function setupTeamMember(member, url, payload, i, doneFunc){
 
         return setTimeout(function(err) {
-            member.profile = profile_summary(member.profile);
             drawTeamMember(member);
             teamDrawnCount++;
             doneFunc();
@@ -6412,10 +6411,14 @@ $(document).ready(function() {
 //        });
   }
 
+/*
+Initially we had this function polling watson on the fly, however because we only have access to the lite account, the requests became blocked.
+Hence, we downloaded the json responses watson outputted and put them in this final for the demo. The functionality is left below, in comments.
+*/
+
     var candidateDrawnCount = 0;
   function setupCandidate(candidate, url, payload, i, doneFunc){
       return setTimeout(function(err) {
-            candidate.profile = profile_summary(candidate.profile);
             drawCandidate(candidate);
             if (teamDrawnCount == team.length || teamMembersLoaded){
                 var match = summary_match(teamAverage, candidate.profile);
@@ -6470,6 +6473,7 @@ $(document).ready(function() {
 
         //calls.push(setupTeamMember(team[i], url, payload, i));
 
+        team[i].profile = profile_summary(team[i].profile);
         setupTeamMember(team[i], url, payload, i, function(){
             if (teamDrawnCount == team.length){
                 teamAverage = averageProfileSummaries(team.map(x => x.profile));
@@ -6503,8 +6507,7 @@ $(document).ready(function() {
 
         var url = '/api/profile/twitter';
 
-
-
+        candidates[i].profile = profile_summary(candidates[i].profile);
         //calls.push(setupCandidate(candidates[i], url, payload, i));
         setupCandidate(candidates[i], url, payload, i, function(){
             if (candidateDrawnCount == candidates.length){
@@ -6519,14 +6522,28 @@ $(document).ready(function() {
 //    }, function(){
 //        $loading.hide();
 //    })
+
+
+  var interval = setInterval(function() {
+    if (teamDrawnCount == team.length){
+        teamAverage = averageProfileSummaries(team.map(x => x.profile));
+        teamMembersLoaded = true;
+        showPersonalityMatches();
+        clearInterval(interval);
+    }
+  }, 100);
+
   }
 
   function showPersonalityMatches(){
       for (var i = 0; i < candidates.length; i++){
-          if (candidates[i].profile !== undefined){
+          if (  candidates[i].matchPercentColumn !== undefined){
               var match = summary_match(teamAverage, candidates[i].profile);
               var percentage = Math.floor(match.personality * 100);
               candidates[i].matchPercentColumn.text(percentage + "%");
+          }
+          else {
+            return;
           }
       }
   }
